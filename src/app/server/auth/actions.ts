@@ -1,8 +1,11 @@
 'use server';
 
 import {z} from 'zod';
-import {supabase} from "src/lib/database/supabaseClient";
-import {State} from "src/lib/components/State";
+import { supabase } from "src/lib/database/supabaseClient";
+import { State } from "src/lib/components/State";
+import { hashPassword } from "src/lib/services/hashPassword";
+import jwt from 'jsonwebtoken';
+import {User, UserSignup} from "src/lib/types/User";
 
 const UserValidator = z.object({
     email: z.string().email({
@@ -30,7 +33,6 @@ export async function signupUser(prevState: State, formData: FormData){
         });
 
         if (!rawFormData.success) {
-            console.log(rawFormData.error.flatten().fieldErrors);
             return {
                 status: 'error',
                 errors: rawFormData.error.flatten().fieldErrors,
@@ -67,14 +69,11 @@ export async function signupUser(prevState: State, formData: FormData){
                 message: 'User already exists'
             }
         }
+        // hash password
+        const hashedPassword = await hashPassword(password);
 
-        // Create a new user in Supabase Auth
-        const { data, error: signUpError } = await supabase.auth.signUp({
-            email,
-            password,
-        });
-
-        if (signUpError) {
+        // check if hashing failed
+        if (!hashedPassword) {
             return {
                 status: 'error',
                 errors: {
@@ -82,8 +81,8 @@ export async function signupUser(prevState: State, formData: FormData){
                     name: [],
                     password: []
                 },
-                message: 'Error signing up : ' + signUpError.message
-            };
+                message: 'Error while signing up. Please try again.'
+            }
         }
 
         // Insert the user data into the database
@@ -91,10 +90,12 @@ export async function signupUser(prevState: State, formData: FormData){
             {
                 fullName: name,
                 email: email,
+                password: hashedPassword
             }
         ]);
 
         if (newUser.error) {
+            console.log(newUser.error);
             return {
                 status: 'error',
                 errors: {
@@ -102,9 +103,16 @@ export async function signupUser(prevState: State, formData: FormData){
                     name: [],
                     password: []
                 },
-                message: 'Error signing up : ' + newUser.error.message
+                message: 'Unable to signup user. Please try again.'
             };
         }
+
+        // generate a token for the user
+        const token = jwt.sign({email: email}, process.env.JWT_SECRET || '',
+            {
+            expiresIn: '24h'
+            }
+        );
 
         return {
             status: 'success',
@@ -113,10 +121,11 @@ export async function signupUser(prevState: State, formData: FormData){
                 name: [],
                 password: []
             },
-            message: 'User created successfully'
+            message: token
         }
 
     } catch (error: any) {
+        console.error(error);
         return {
             status: 'error',
             errors: {

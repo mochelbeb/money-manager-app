@@ -4,6 +4,8 @@ import {signupUser} from "src/app/server/auth/actions";
 import {useFormState} from "react-dom";
 import {State} from "src/lib/components/State";
 import feedbackModel from "src/lib/services/feedback";
+import {redirect} from "next/navigation";
+import {setCookies} from "src/lib/services/cookies";
 
 const SignupForm = () => {
     const initialState: State = {
@@ -15,9 +17,21 @@ const SignupForm = () => {
 
     // call feedbackModel after form submission
     if (state.status === 'success') {
-        feedbackModel(state.status, state.message).then();
-    } else if (state.status === 'error') {
-        feedbackModel(state.status, state.message).then();
+        feedbackModel({
+            status: state.status,
+            message: 'User created successfully',
+            title: 'Success'
+        }).then();
+
+        setCookies('token', state.message);
+        redirect('/');
+
+    } else if (state.status === 'error' && !(state.errors.email?.length || state.errors.password?.length || state.errors.name?.length)) {
+        feedbackModel({
+            status: state.status,
+            message: state.message,
+            title: 'Error'
+        }).then();
     }
 
     return (

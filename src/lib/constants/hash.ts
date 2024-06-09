@@ -1,0 +1,3 @@
+const HASH_SALT_ROUNDS = 10;
+
+export { HASH_SALT_ROUNDS };
