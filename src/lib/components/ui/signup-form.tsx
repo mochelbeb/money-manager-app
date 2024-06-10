@@ -4,8 +4,9 @@ import {signupUser} from "src/app/server/auth/actions";
 import {useFormState} from "react-dom";
 import {State} from "src/lib/components/State";
 import feedbackModel from "src/lib/services/feedback";
+import {serialize} from 'cookie';
+import {headers} from "next/headers";
 import {redirect} from "next/navigation";
-import {setCookies} from "src/lib/services/cookies";
 
 const SignupForm = () => {
     const initialState: State = {
@@ -13,26 +14,11 @@ const SignupForm = () => {
         errors: {},
         status: 'empty'
     };
+
     const [state, dispatch] = useFormState(signupUser, initialState);
 
     // call feedbackModel after form submission
-    if (state.status === 'success') {
-        feedbackModel({
-            status: state.status,
-            message: 'User created successfully',
-            title: 'Success'
-        }).then();
-
-        setCookies('token', state.message);
-        redirect('/');
-
-    } else if (state.status === 'error' && !(state.errors.email?.length || state.errors.password?.length || state.errors.name?.length)) {
-        feedbackModel({
-            status: state.status,
-            message: state.message,
-            title: 'Error'
-        }).then();
-    }
+    handleState(state);
 
     return (
         <form className="space-y-6" action={dispatch}>
@@ -96,6 +82,25 @@ const SignupForm = () => {
             </button>
         </form>
     );
+}
+
+const handleState = (state: State) => {
+    if (state.status === 'success') {
+        feedbackModel({
+            status: state.status,
+            message: 'User created successfully',
+            title: 'Success'
+        }).then();
+
+        redirect('/');
+
+    } else if (state.status === 'error' && !(state.errors.email?.length || state.errors.password?.length || state.errors.name?.length)) {
+        feedbackModel({
+            status: state.status,
+            message: state.message,
+            title: 'Error'
+        }).then();
+    }
 }
 
 export default SignupForm;

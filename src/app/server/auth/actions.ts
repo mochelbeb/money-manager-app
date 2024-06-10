@@ -5,7 +5,9 @@ import { supabase } from "src/lib/database/supabaseClient";
 import { State } from "src/lib/components/State";
 import { hashPassword } from "src/lib/services/hashPassword";
 import jwt from 'jsonwebtoken';
-import {User, UserSignup} from "src/lib/types/User";
+import {cookies} from "next/headers";
+import bcrypt from "bcrypt";
+import {setCookies} from "src/lib/services/cookies";
 
 const UserValidator = z.object({
     email: z.string().email({
@@ -114,6 +116,12 @@ export async function signupUser(prevState: State, formData: FormData){
             }
         );
 
+        // set cookie
+        cookies().set('session', token, {
+            httpOnly: true,
+            expires: new Date(Date.now() + 24 * 60 * 60 * 1000)
+        });
+
         return {
             status: 'success',
             errors: {
@@ -121,7 +129,106 @@ export async function signupUser(prevState: State, formData: FormData){
                 name: [],
                 password: []
             },
-            message: token
+            message: "User created successfully",
+        }
+
+    } catch (error: any) {
+        console.error(error);
+        return {
+            status: 'error',
+            errors: {
+                email: [],
+                name: [],
+                password: []
+            },
+            message: 'Internal Server Error'
+        };
+    }
+}
+
+export async function loginUser(prevState: State, formData: FormData) {
+    try {
+        const userLogin = UserValidator.omit({confirmPassword: true, name: true});
+
+        const rawFormData = UserValidator.safeParse({
+            email: formData.get('email'),
+            password: formData.get('password'),
+        });
+
+        if (!rawFormData.success) {
+            return {
+                status: 'error',
+                errors: rawFormData.error.flatten().fieldErrors,
+                message: 'Invalid information provided.'
+            }
+        }
+
+        const {email, password} = rawFormData.data;
+
+        // check if user exists in table
+        const {
+            data: user,
+            error
+        } = await supabase.from('users').select('email, password').eq('email', email).limit(1);
+
+        if (error) {
+            return {
+                status: 'error',
+                errors: {
+                    email: [],
+                    name: [],
+                    password: []
+                },
+                message: 'Error while logging in. Please try again.'
+            }
+        }
+
+        if (!user || user.length === 0) {
+            return {
+                status: 'error',
+                errors: {
+                    email: ['User does not exist'],
+                    name: [],
+                    password: []
+                },
+                message: 'User does not exist'
+            }
+        }
+
+        // compare the password
+        const hashedPassword = user[0].password;
+        const passwordMatch = await bcrypt.compare(password, hashedPassword);
+
+        if (!passwordMatch) {
+            return {
+                status: 'error',
+                errors: {
+                    email: [],
+                    name: [],
+                    password: []
+                },
+                message: 'Invalid Email or Password'
+            }
+        }
+
+        // generate a token for the user
+        const token = jwt.sign({email: email}, process.env.JWT_SECRET || '',
+            {
+                expiresIn: '24h'
+            }
+        );
+
+        // set cookie
+        setCookies('session', token);
+
+        return {
+            status: 'success',
+            errors: {
+                email: [],
+                name: [],
+                password: []
+            },
+            message: "User logged in successfully",
         }
 
     } catch (error: any) {

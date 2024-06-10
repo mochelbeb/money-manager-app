@@ -1,7 +1,20 @@
+import {State} from "src/lib/components/State";
+import {useFormState} from "react-dom";
+import {loginUser} from "src/app/server/auth/actions";
+import feedbackModel from "src/lib/services/feedback";
+import {redirect} from "next/navigation";
 
 const LoginForm = () => {
+    const initialState: State = {
+        message: '',
+        errors: {},
+        status: 'empty'
+    };
+    const [state, dispatch] = useFormState(loginUser, initialState);
+    handleState(state);
+
     return (
-        <form className="space-y-6">
+        <form className="space-y-6" action={dispatch}>
             <div>
                 <label htmlFor="username" className="block text-sm font-medium text-gray-300">Username</label>
                 <input
@@ -28,6 +41,25 @@ const LoginForm = () => {
             </button>
         </form>
     );
+}
+
+const handleState = (state: State) => {
+    if (state.status === 'success') {
+        feedbackModel({
+            status: state.status,
+            message: 'Login successfully',
+            title: 'Success'
+        }).then();
+
+        redirect('/');
+
+    } else if (state.status === 'error' && !(state.errors.email?.length || state.errors.password?.length)) {
+        feedbackModel({
+            status: state.status,
+            message: state.message,
+            title: 'Error'
+        }).then();
+    }
 }
 
 export default LoginForm;
