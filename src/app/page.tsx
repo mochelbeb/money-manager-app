@@ -1,4 +1,3 @@
-// pages/index.tsx
 import Link from 'next/link';
 import Image from 'next/image';
 import NavBar from 'src/lib/components/NavBar';

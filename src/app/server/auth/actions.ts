@@ -150,12 +150,13 @@ export async function loginUser(prevState: State, formData: FormData) {
     try {
         const userLogin = UserValidator.omit({confirmPassword: true, name: true});
 
-        const rawFormData = UserValidator.safeParse({
+        const rawFormData = userLogin.safeParse({
             email: formData.get('email'),
             password: formData.get('password'),
         });
 
         if (!rawFormData.success) {
+            console.log(rawFormData.error.flatten().fieldErrors);
             return {
                 status: 'error',
                 errors: rawFormData.error.flatten().fieldErrors,
@@ -172,6 +173,7 @@ export async function loginUser(prevState: State, formData: FormData) {
         } = await supabase.from('users').select('email, password').eq('email', email).limit(1);
 
         if (error) {
+            console.log(error);
             return {
                 status: 'error',
                 errors: {
@@ -184,6 +186,7 @@ export async function loginUser(prevState: State, formData: FormData) {
         }
 
         if (!user || user.length === 0) {
+            console.log('User does not exist');
             return {
                 status: 'error',
                 errors: {
@@ -200,6 +203,7 @@ export async function loginUser(prevState: State, formData: FormData) {
         const passwordMatch = await bcrypt.compare(password, hashedPassword);
 
         if (!passwordMatch) {
+            console.log('Invalid email or password');
             return {
                 status: 'error',
                 errors: {
@@ -220,6 +224,8 @@ export async function loginUser(prevState: State, formData: FormData) {
 
         // set cookie
         setCookies('session', token);
+
+        console.log('User logged in successfully');
 
         return {
             status: 'success',

@@ -1,4 +1,3 @@
-// pages/login.tsx
 import Link from 'next/link';
 import NavBar from "src/lib/components/NavBar";
 import CopyRights from "src/lib/components/CopyRights";

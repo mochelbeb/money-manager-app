@@ -4,16 +4,10 @@ import {signupUser} from "src/app/server/auth/actions";
 import {useFormState} from "react-dom";
 import {State} from "src/lib/components/State";
 import feedbackModel from "src/lib/services/feedback";
-import {serialize} from 'cookie';
-import {headers} from "next/headers";
 import {redirect} from "next/navigation";
+import {initialState} from "src/lib/constants/stats";
 
 const SignupForm = () => {
-    const initialState: State = {
-        message: '',
-        errors: {},
-        status: 'empty'
-    };
 
     const [state, dispatch] = useFormState(signupUser, initialState);
 
